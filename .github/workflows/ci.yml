@@ -46,7 +46,7 @@ jobs:
 
       - name: Update values.yaml in Helm repo
         run: |
-          cd helm-repo
+          cd helm-repo/webapp-chart
           yq eval -i ".image.repository = \"${FULL_IMAGE_REPO}\" | .image.tag = \"${IMAGE_TAG}\"" values.yaml
           
           git config user.name "github-actions"
