@@ -1,0 +1,56 @@
+name: Build image and update Helm chart
+
+on:
+  push:
+    tags:
+      - "dev-v*"
+
+jobs:
+  build-and-update-helm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout app repo
+        uses: actions/checkout@v4
+
+      - name: Set variables
+        id: vars
+        run: |
+          IMAGE_TAG="${GITHUB_REF#refs/tags/}"
+          IMAGE_REPO="docker.io/${{ secrets.DOCKER_USERNAME }}/webapp-app" # Новый адрес Registry
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "FULL_IMAGE_REPO=$IMAGE_REPO" >> $GITHUB_ENV
+          
+      - name: Log in to Docker registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push image
+        run: |
+          docker build -t $FULL_IMAGE_REPO:$IMAGE_TAG .
+          docker push $FULL_IMAGE_REPO:$IMAGE_TAG
+
+      - name: Checkout Helm repo
+        uses: actions/checkout@v4
+        with:
+          repository: HannaJyha/webapp-helm
+          path: helm-repo
+          token: ${{ secrets.HELM_REPO_PAT }}
+
+      - name: Install yq
+        run: sudo snap install yq
+
+      - name: Update values.yaml in Helm repo
+        run: |
+          cd helm-repo/webapp-chart
+          yq eval -i ".image.repository = \"${FULL_IMAGE_REPO}\" | .image.tag = \"${IMAGE_TAG}\"" values.yaml
+          
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add values.yaml
+          git commit -m "ci: update image to ${FULL_IMAGE_REPO}:${IMAGE_TAG}" || echo "No changes to commit"
+          git push https://x-access-token:${{ secrets.HELM_REPO_PAT }}@github.com/HannaJyha/webapp-helm.git HEAD:main
