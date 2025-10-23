@@ -32,15 +32,16 @@ update_helm_repo_job:
     - git config user.email "gitlab-ci-user@devops-gitlab.inno.ws"
     - git config user.name "GitLab CI Pipeline"
   script:
-    - echo "Клонирование Helm-репозитория..."
-    - git clone $HELM_REPO_URL helm-repo
-    - cd helm-repo
-    - echo "Текущий тег: $CI_COMMIT_TAG"
-    - yq eval -i ".image.repository = \"$IMAGE_REPOSITORY\" | .image.tag = \"$CI_COMMIT_TAG\"" webapp-chart/values.yaml
-    - git add webapp-chart/values.yaml
-    - git commit -m "CI: Update image tag to $CI_COMMIT_TAG for $IMAGE_REPOSITORY" || echo "No changes to commit"
-    - git push
-    - echo "Helm-репозиторий обновлен."
+    - |
+      echo "Клонирование Helm-репозитория..."
+      git clone $HELM_REPO_URL helm-repo
+      cd helm-repo
+      echo "Текущий тег: $CI_COMMIT_TAG"
+      yq eval -i ".image.repository = \"$IMAGE_REPOSITORY\" | .image.tag = \"$CI_COMMIT_TAG\"" webapp-chart/values.yaml
+      git add webapp-chart/values.yaml
+      git commit -m "CI: Update image tag to $CI_COMMIT_TAG for $IMAGE_REPOSITORY" || echo "No changes to commit"
+      git push
+      echo "Helm-репозиторий обновлен."
   rules:
     - if: $CI_COMMIT_TAG =~ /^dev-v.*$/
       when: on_success
